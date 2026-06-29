@@ -258,7 +258,6 @@ inline int _findclose(intptr_t id)
 
 add_executable(Objs2Abc
   Objs2Abc/Objs2Abc.cpp
-  Objs2Abc/Objs2Alembic.cpp
 )
 
 target_compile_definitions(Objs2Abc PRIVATE sscanf_s=sscanf)

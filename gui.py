@@ -53,6 +53,7 @@ class ObjToAlembicApp(tk.Tk):
         self.process = None
         self.current_job = None
         self.last_output_path = None
+        self.total_frames = 0
 
         self.input_dir = tk.StringVar()
         self.output_dir = tk.StringVar()
@@ -150,8 +151,17 @@ class ObjToAlembicApp(tk.Tk):
         self.reveal_button = ttk.Button(actions, text="Reveal Output", style="Tool.TButton", command=self._reveal_output, state="disabled")
         self.reveal_button.grid(row=0, column=3, padx=(8, 0))
 
-        self.progress = ttk.Progressbar(body, mode="indeterminate")
-        self.progress.grid(row=4, column=0, sticky="ew", pady=(10, 0))
+        progress_row = ttk.Frame(body)
+        progress_row.grid(row=4, column=0, sticky="ew", pady=(10, 0))
+        progress_row.columnconfigure(0, weight=1)
+
+        self.progress = ttk.Progressbar(progress_row, mode="indeterminate")
+        self.progress.grid(row=0, column=0, sticky="ew")
+
+        self.progress_label = tk.StringVar(value="")
+        ttk.Label(progress_row, textvariable=self.progress_label, style="Subtitle.TLabel").grid(
+            row=0, column=1, padx=(10, 0)
+        )
 
         log_frame = ttk.LabelFrame(body, text="Log", padding=8)
         log_frame.grid(row=5, column=0, sticky="nsew", pady=(12, 0))
@@ -321,6 +331,8 @@ class ObjToAlembicApp(tk.Tk):
         self._clear_log()
         self._append_log("$ " + " ".join(shlex.quote(part) for part in command) + "\n\n")
         self.current_job = kind
+        self.total_frames = 0
+        self.progress_label.set("")
         self._set_running(True)
         thread = threading.Thread(target=self._run_process, args=(command,), daemon=True)
         thread.start()
@@ -331,9 +343,17 @@ class ObjToAlembicApp(tk.Tk):
         self.build_button.configure(state=state)
         self.cancel_button.configure(state="normal" if running else "disabled")
         if running:
-            self.progress.start(12)
+            if self.current_job == "convert":
+                self.progress.configure(mode="determinate")
+                self.progress["value"] = 0
+            else:
+                self.progress.configure(mode="indeterminate")
+                self.progress.start(12)
         else:
             self.progress.stop()
+            self.progress.configure(mode="determinate")
+            self.progress["value"] = 0
+            self.progress_label.set("")
 
     def _run_process(self, command):
         try:
@@ -376,7 +396,21 @@ class ObjToAlembicApp(tk.Tk):
                 message = self.log_queue.get_nowait()
                 kind = message[0]
                 if kind == "log":
-                    self._append_log(message[1])
+                    line = message[1]
+                    if self.current_job == "convert" and line.startswith("PROGRESS "):
+                        parts = line.split()
+                        if len(parts) == 3:
+                            try:
+                                current = int(parts[1])
+                                total = int(parts[2])
+                                if total > 0:
+                                    self.total_frames = total
+                                    self.progress["value"] = (current / total) * 100
+                                    self.progress_label.set(f"{current} / {total}")
+                            except ValueError:
+                                pass
+                    else:
+                        self._append_log(line)
                 elif kind == "done":
                     _, job, return_code = message
                     self._set_running(False)

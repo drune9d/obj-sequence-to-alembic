@@ -1,15 +1,19 @@
 ﻿// Alembic Includes
 #include <Alembic/AbcGeom/All.h>
 #include <Alembic/AbcCoreOgawa/All.h>
-#include <algorithm>  
+#include <algorithm>
 // Other includes
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <atomic>
+#include <condition_variable>
 #include <fstream>
+#include <mutex>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <Vector>
 #include <io.h>
 #include <algorithm>
@@ -36,134 +40,6 @@ struct uv
 	float v;
 };
 
-void ReadObj(string path, std::vector<vertice>& OutVertices, std::vector<uv>& OutUvs, std::vector<vertice>& OutNormals, std::vector<int>& OutFace, std::vector<int>& Outgcounts)
-{
-	string s, str, s1, s2, s3, s4, s5, s6;
-	ifstream inf;
-	vertice v;
-	vertice normal;
-	uv u;
-	string::size_type idx;
-	inf.open(path);
-
-	int vn = 0;
-	int vnum = 0;
-	int fnum = 0;
-	if (inf.is_open())
-	{
-		while (getline(inf, s))
-		{
-
-			//std::cout << s << std::endl;
-			if (s[0] == 'v')
-			{
-				if (s[1] == 't')
-				{
-					istringstream in(s);
-					in >> s1 >> s2 >> s3;
-					u.u = std::stof(s2);
-					u.v = std::stof(s3);
-					OutUvs.push_back(u);
-				}
-				else if (s[1] == 'n')
-				{
-					istringstream in(s);
-					in >> s1 >> s2 >> s3 >> s4;
-					normal.x = std::stof(s2);
-					normal.y = std::stof(s3);
-					normal.z = std::stof(s4);
-					OutNormals.push_back(normal);
-				}
-				else
-				{
-					istringstream in(s);
-					in >> s1 >> s2 >> s3 >> s4;
-					v.x = std::stof(s2);
-					v.y = std::stof(s3);
-					v.z = std::stof(s4);
-					OutVertices.push_back(v);
-				}
-			}
-
-			int a = 0, b = 0, c = 0, d = 0;
-			if (s[0] == 'f')
-			{
-				istringstream in(s);
-				in >> s1 >> s2 >> s3 >> s4 >> s5;
-				idx = s1.find("/");
-				if (idx == string::npos) // no exist '/'
-				{
-					
-					a = std::stoi(s2);
-					b = std::stoi(s3);
-					c = std::stoi(s4);
-					if (!s5.empty())
-					{
-						d = std::stoi(s5);
-						OutFace.push_back(d - 1);
-						OutFace.push_back(c - 1);
-						OutFace.push_back(b - 1);
-						OutFace.push_back(a - 1);
-						Outgcounts.push_back(4);
-					}
-					else
-					{
-						OutFace.push_back(c - 1);
-						OutFace.push_back(b - 1);
-						OutFace.push_back(a - 1);
-						Outgcounts.push_back(3);
-					}
-					s5 = "";
-				}
-				else
-				{
-					for (int k = 0; s2[k] != '/'; k++)
-					{
-						a = a * 10 + (s2[k] - 48);
-					}
-					
-					for (int k = 0; s3[k] != '/'; k++)
-					{
-						b = b * 10 + (s3[k] - 48);
-					}
-					
-					for (int k = 0; s4[k] != '/'; k++)
-					{
-						c = c * 10 + (s4[k] - 48);
-					}
-					
-					if (!s5.empty())
-					{
-						for (int k = 0; s5[k] != '/'; k++)
-						{
-							d = d * 10 + (s5[k] - 48);
-						}
-						OutFace.push_back(d - 1);
-						OutFace.push_back(c - 1);
-						OutFace.push_back(b - 1);
-						OutFace.push_back(a - 1);
-						Outgcounts.push_back(4);
-					}
-					else
-					{
-						OutFace.push_back(c - 1);
-						OutFace.push_back(b - 1);
-						OutFace.push_back(a - 1);
-						Outgcounts.push_back(3);
-					}
-					s5 = "";
-				}
-				
-
-			}
-
-		}
-
-	}
-
-	inf.close();
-
-}
 
 
 void ReadObj(const std::string& path, std::vector<vertice>& OutVertices, std::vector<uv>& OutUvs, std::vector<vertice>& OutNormals, std::vector<int>& OutFaceVertices, std::vector<int>& OutFaceUvs, std::vector<int>& Outgcounts) {
@@ -176,7 +52,8 @@ void ReadObj(const std::string& path, std::vector<vertice>& OutVertices, std::ve
 
 	if (inf.is_open()) {
 		while (getline(inf, s)) {
-			if (s[0] == 'v') {
+			if (s.empty()) continue;
+			if (s[0] == 'v' && s.size() > 1) {
 				if (s[1] == 't') {
 					std::istringstream in(s);
 					in >> s1 >> u.u >> u.v;
@@ -220,10 +97,9 @@ void ReadObj(const std::string& path, std::vector<vertice>& OutVertices, std::ve
 						uvIndices.push_back(-1); 
 					}
 				}
-				std::reverse(vertexIndices.begin(), vertexIndices.end());
 				for (size_t i = 0; i < vertexIndices.size(); ++i) {
 					OutFaceVertices.push_back(vertexIndices[i]);
-					OutFaceUvs.push_back(uvIndices.size() > i ? uvIndices[i] : -1); 
+					OutFaceUvs.push_back(uvIndices.size() > i ? uvIndices[i] : -1);
 				}
 				
 				Outgcounts.push_back(vertexIndices.size());
@@ -260,24 +136,31 @@ void getFiles(string path, std::vector<string>& files)
 	}
 }
 
-void read_abc(string name)
+// Fast vertex-position-only reader for animation frames after the first.
+// Uses strtof instead of istringstream for significantly faster float parsing.
+// reserveHint avoids reallocations since topology is constant across frames.
+static std::vector<vertice> ReadObjVerticesOnly(const std::string& path, size_t reserveHint)
 {
-	
-	IArchive archive(Alembic::AbcCoreOgawa::ReadArchive(), name);
-	std::cout << "Reading: " << archive.getName() << std::endl;
-	std::cout << archive.getTop() << std::endl;
-	IPolyMesh mymeshyObj(IObject(archive, kTop));
-	IPolyMeshSchema& m = mymeshyObj.getSchema();
-	IV2fGeomParam uv = m.getUVsParam();
-	std::cout << "Num Samples" << m.getNumSamples() << std::endl;
-	std::cout << "uvs Num Samples" << m.getUVsParam().getNumSamples() << std::endl;
-	
+	std::vector<vertice> vertices;
+	vertices.reserve(reserveHint);
+	std::ifstream file(path, std::ios::binary);
+	if (!file.is_open()) return vertices;
+	std::string line;
+	while (std::getline(file, line)) {
+		if (line.size() < 3 || line[0] != 'v' || line[1] != ' ') continue;
+		const char* p = line.c_str() + 2;
+		char* end;
+		vertice v;
+		v.x = strtof(p, &end);
+		v.y = strtof(end, &end);
+		v.z = strtof(end, nullptr);
+		vertices.push_back(v);
+	}
+	return vertices;
 }
 
 void seq2abc(string inputdir, string ouputfile, float fps, std::string NodeName)
 {
-	
-	string suffixStr = "obj";
 	std::vector<vertice> Vertices;
 	std::vector<vertice> Normals;
 	std::vector<uv> Uvs;
@@ -287,114 +170,124 @@ void seq2abc(string inputdir, string ouputfile, float fps, std::string NodeName)
 	std::vector<int> g_counts_array;
 	getFiles(inputdir, filenames);
 	std::sort(filenames.begin(), filenames.end());
-	int i = 0;
+
+	if (filenames.empty()) {
+		std::cerr << "No OBJ files found in: " << inputdir << std::endl;
+		return;
+	}
+
+	int totalFrames = (int)filenames.size();
+
 	OArchive archive(Alembic::AbcCoreOgawa::WriteArchive(), ouputfile);
 	TimeSamplingPtr ts(new TimeSampling(1.0 / fps, 0.0));
 	OXform xfobj(archive.getTop(), NodeName, ts);
 	OPolyMesh meshyObj(xfobj, NodeName, ts);
-	//OPolyMesh meshyObj(OObject(archive, kTop), "mesh", ts);
 	OPolyMeshSchema& mesh = meshyObj.getSchema();
-	mesh.setUVSourceName("UVMap");
+
+	// Read first frame to establish topology, UVs, and initial positions
 	ReadObj(filenames[0], Vertices, Uvs, Normals, face, FaceUvIndexs, g_counts_array);
-	//ReadObj(filenames[0], Vertices, Uvs, Normals, face, g_counts_array);
-	std::vector< V3f > verts(Vertices.size());
+
+	std::vector<V3f> verts(Vertices.size());
 	for (size_t i = 0; i < Vertices.size(); ++i)
-	{
 		verts[i] = V3f(Vertices[i].x, Vertices[i].y, Vertices[i].z);
-	}
-	int32_t g_numIndices2 = face.size();
+
+	int32_t g_numIndices2 = (int32_t)face.size();
 	int32_t* g_indices2 = new int32_t[g_numIndices2];
-	//int32_t g_indices[g_numIndices];
 	std::copy(face.begin(), face.end(), g_indices2);
 	Abc::int32_t* g_counts2 = new Abc::int32_t[g_counts_array.size()];
 	std::copy(g_counts_array.begin(), g_counts_array.end(), g_counts2);
-	int j = 0;
-	
+
 	OPolyMeshSchema::Sample mesh_samp(
 		V3fArraySample(verts),
 		Int32ArraySample(g_indices2, g_numIndices2),
 		Int32ArraySample(g_counts2, g_counts_array.size()));
-	std::vector<V2f> FaceUvs(FaceUvIndexs.size());
 
-	if (FaceUvIndexs.size() > 0)
-	{
-		for (size_t i = 0; i < FaceUvIndexs.size(); ++i) {
-			if (FaceUvIndexs[i] != -1)
-			{
-				FaceUvs[i] = V2f(Uvs[FaceUvIndexs[i]].u, Uvs[FaceUvIndexs[i]].v);
-			}
-			
-		}
+	// Only write a UV set if the OBJ actually contains UV data. Otherwise the
+	// array stays uninitialized (Imath V2f does not zero its members), which
+	// would emit a garbage, non-deterministic UV map.
+	bool hasUVs = !Uvs.empty();
+	for (size_t i = 0; hasUVs && i < FaceUvIndexs.size(); ++i) {
+		if (FaceUvIndexs[i] == -1) { hasUVs = false; break; }
 	}
-	
-	V2fArraySample uvSample(FaceUvs);
-	mesh_samp.setUVs(OV2fGeomParam::Sample(uvSample, kFacevaryingScope));
-	
+
+	std::vector<V2f> FaceUvs;
+	if (hasUVs) {
+		mesh.setUVSourceName("UVMap");
+		FaceUvs.assign(FaceUvIndexs.size(), V2f(0.0f, 0.0f));
+		for (size_t i = 0; i < FaceUvIndexs.size(); ++i)
+			FaceUvs[i] = V2f(Uvs[FaceUvIndexs[i]].u, Uvs[FaceUvIndexs[i]].v);
+		V2fArraySample uvSample(FaceUvs);
+		mesh_samp.setUVs(OV2fGeomParam::Sample(uvSample, kFacevaryingScope));
+	}
+
 	mesh.set(mesh_samp);
+	std::cout << "PROGRESS 1 " << totalFrames << std::endl;
 
-	for (int i = 1; i < filenames.size(); i++)
-	{
-		Vertices.clear();
-		face.clear();
-		Uvs.clear();
-		Normals.clear();
-		string filetype = filenames[i].substr(filenames[i].find_last_of(".") + 1);
-		transform(filetype.begin(), filetype.end(), filetype.begin(), ::tolower);
+	if (totalFrames > 1) {
+		int remaining = totalFrames - 1;
+		size_t vertexHint = Vertices.size();
 
-		if (filetype == suffixStr)
-		{
-			ReadObj(filenames[i], Vertices, Uvs, Normals, face, g_counts_array);
+		unsigned int numThreads = std::max(1u, std::thread::hardware_concurrency());
+		numThreads = std::min(numThreads, (unsigned int)remaining);
 
+		// Bounded prefetch pipeline: worker threads read frames ahead while the
+		// main thread writes them to Alembic in order. Reading and writing overlap,
+		// and at most `window` frames are held in memory at once.
+		int window = std::max(2, (int)numThreads * 2);
+
+		std::vector<std::vector<vertice>> slots(remaining);
+		std::vector<char> ready(remaining, 0);
+		std::mutex m;
+		std::condition_variable cv;
+		std::atomic<int> nextRead(0);
+		int writeIndex = 0;  // guarded by m; frames the writer has consumed
+
+		auto worker = [&]() {
+			while (true) {
+				int idx = nextRead.fetch_add(1);
+				if (idx >= remaining) break;
+				// Stay within the memory window of the writer.
+				{
+					std::unique_lock<std::mutex> lk(m);
+					cv.wait(lk, [&] { return idx < writeIndex + window; });
+				}
+				std::vector<vertice> data = ReadObjVerticesOnly(filenames[idx + 1], vertexHint);
+				{
+					std::lock_guard<std::mutex> lk(m);
+					slots[idx] = std::move(data);
+					ready[idx] = 1;
+				}
+				cv.notify_all();
+			}
+		};
+
+		std::vector<std::thread> workers;
+		workers.reserve(numThreads);
+		for (unsigned int t = 0; t < numThreads; ++t)
+			workers.emplace_back(worker);
+
+		// Write frames in order — Alembic is not thread-safe.
+		for (int i = 0; i < remaining; ++i) {
+			std::vector<vertice> fv;
+			{
+				std::unique_lock<std::mutex> lk(m);
+				cv.wait(lk, [&] { return ready[i] != 0; });
+				fv = std::move(slots[i]);
+				writeIndex = i + 1;
+			}
+			cv.notify_all();  // let blocked readers advance into the freed window
+
+			for (size_t j = 0; j < fv.size() && j < verts.size(); ++j)
+				verts[j] = V3f(fv[j].x, fv[j].y, fv[j].z);
+			mesh.set(mesh_samp);
+			std::cout << "PROGRESS " << (i + 2) << " " << totalFrames << std::endl;
 		}
-		for (size_t i = 0; i < Vertices.size(); ++i)
-		{
-			verts[i] = V3f(Vertices[i].x, Vertices[i].y, Vertices[i].z);
-		}
-		std::cout << "verteice size " << Vertices.size() << std::endl;
-		std::cout << "face count " << face.size() << std::endl;
-		std::cout << "uv count " << FaceUvs.size() << std::endl;
-		std::cout << "read name " << filenames[i] << std::endl;
-		mesh.set(mesh_samp);
 
+		for (auto& w : workers) w.join();
 	}
+
 	delete[] g_indices2;
 	delete[] g_counts2;
-	
-	/*
-	ON3fGeomParam::Sample nsamp( N3fArraySample( (const N3f *)g_normals,
-		g_numNormals ), kFacevaryingScope );
-	mesh_samp.setNormals( nsamp );
-
-	
-	mesh_samp.setVelocities( V3fArraySample( ( const V3f * )g_veloc,
-										   g_numVerts ) );
-	mesh.set( mesh_samp );
-
-	mesh_samp.setNormals( ON3fGeomParam::Sample() );
-	mesh_samp.setUVs( OV2fGeomParam::Sample() );
-	mesh_samp.setVelocities( V3fArraySample() );
-	mesh.set( mesh_samp );
-
-
-	mesh_samp.setVelocities( V3fArraySample( ( const V3f * )g_veloc,
-										   g_numVerts ) );
-	mesh_samp.setUVs( uvsamp );
-	mesh_samp.setNormals( nsamp );
-	*/
-	/*
-	IArchive archive( Alembic::AbcCoreOgawa::ReadArchive(), name );
-
-	IPolyMesh meshyObj( IObject( archive, kTop ), "mesh" );
-	IPolyMeshSchema &mesh = meshyObj.getSchema();
-	TESTING_ASSERT( 7 == mesh.getNumSamples() );
-	TESTING_ASSERT( 7 == mesh.getVelocitiesProperty().getNumSamples() );
-	TESTING_ASSERT( 7 == mesh.getUVsParam().getNumSamples() );
-	TESTING_ASSERT( 7 == mesh.getNormalsParam().getNumSamples() );
-	TESTING_ASSERT(
-		GetSourceName( mesh.getUVsParam().getMetaData() ) == "" );
-	TESTING_ASSERT( isUV( mesh.getUVsParam().getHeader() ) );
-	*/
-
 }
 
 void print_usage(const char* name)
@@ -419,11 +312,11 @@ int main(int argc, char* argv[])
 		print_usage(argv[0]);
 		return 1;
 	}
-	string inputdir = "E:\\CPP_Project\\Objs2Abc\\x64\\Release\\total";
-	string output = "test.abc";
+	string inputdir = "";
+	string output = "output.abc";
 	string NodeName = "NodeName";
 	float fps = 24.0;
-	
+
 	for (int i = 1; i < argc; i++)
 	{
 		std::string t_arg = std::string(argv[i]);
@@ -432,23 +325,43 @@ int main(int argc, char* argv[])
 			print_usage(argv[0]);
 			return 0;
 		}
-		else if (t_arg == "-i" || t_arg == "--in")
+
+		// All remaining options require a value argument.
+		bool needsValue = (t_arg == "-i" || t_arg == "--in" ||
+			t_arg == "-o" || t_arg == "--out" ||
+			t_arg == "-f" || t_arg == "--fps" ||
+			t_arg == "-n" || t_arg == "--name");
+		if (needsValue && i + 1 >= argc)
 		{
-			inputdir = argv[i + 1];
+			std::cerr << "Missing value for option: " << t_arg << std::endl;
+			print_usage(argv[0]);
+			return 1;
+		}
+
+		if (t_arg == "-i" || t_arg == "--in")
+		{
+			inputdir = argv[++i];
 		}
 		else if (t_arg == "-o" || t_arg == "--out")
 		{
-			output = argv[i + 1];
+			output = argv[++i];
 		}
 		else if (t_arg == "-f" || t_arg == "--fps")
 		{
-			fps = std::stof(argv[i + 1]);
+			fps = std::stof(argv[++i]);
 		}
 		else if(t_arg == "-n" || t_arg == "--name")
 	    {
-			NodeName = argv[i + 1];
+			NodeName = argv[++i];
 		}
-		
+
+	}
+
+	if (inputdir.empty())
+	{
+		std::cerr << "No input directory given. Use -i <obj_folder>." << std::endl;
+		print_usage(argv[0]);
+		return 1;
 	}
 	
 	std::cout << "input dir: " << inputdir << std::endl;
@@ -459,8 +372,6 @@ int main(int argc, char* argv[])
 	// Mesh out
 	
 	seq2abc(inputdir, output, fps, NodeName);
-	string name = "output.abc";
-	//read_abc(name);
 
 	return 0;
 }
