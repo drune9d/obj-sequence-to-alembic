@@ -1,6 +1,18 @@
-# OBJ Sequence to Alembic
+<div align="center">
 
-Convert an OBJ frame sequence into an Alembic `.abc` mesh cache on macOS.
+# OBJ Sequence → Alembic
+
+**Convert an OBJ frame sequence into an Alembic `.abc` mesh cache on macOS.**
+
+![Platform](https://img.shields.io/badge/platform-macOS%2013%2B-black)
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Format](https://img.shields.io/badge/output-Alembic%20.abc-orange)
+
+<img src="docs/gui.png" alt="OBJ Sequence to Alembic GUI" width="640">
+
+</div>
+
+---
 
 This tool is meant for folders full of numbered OBJ files, such as:
 
@@ -64,22 +76,19 @@ expected to update that same mesh's vertex positions.
 
 ## Data Support
 
-Written to Alembic:
-
-- animated vertex positions
-- face indices and face counts
-- face-varying UVs when OBJ `vt` data exists
-- framerate/time sampling
-
-Not currently written:
-
-- normals
-- materials or `.mtl` files
-- texture paths
-- OBJ groups or object names
-- vertex colors
-- multiple independent meshes in one OBJ
-- custom attributes
+| Data | Exported |
+| --- | :---: |
+| Animated vertex positions | ✅ |
+| Face indices and face counts | ✅ |
+| Face-varying UVs (when OBJ `vt` data exists) | ✅ |
+| Framerate / time sampling | ✅ |
+| Normals | ❌ |
+| Materials or `.mtl` files | ❌ |
+| Texture paths | ❌ |
+| OBJ groups or object names | ❌ |
+| Vertex colors | ❌ |
+| Multiple independent meshes in one OBJ | ❌ |
+| Custom attributes | ❌ |
 
 UVs are preserved when the OBJ files contain UV data. Normals and material data
 are not currently exported.
