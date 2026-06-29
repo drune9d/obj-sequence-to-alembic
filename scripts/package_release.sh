@@ -26,10 +26,11 @@ cp "$ROOT_DIR/LICENSE" "$STAGE_DIR/"
 cp "$ROOT_DIR/CMakeLists.txt" "$TOOL_DIR/"
 cp "$ROOT_DIR/build.sh" "$TOOL_DIR/"
 cp "$ROOT_DIR/gui.py" "$TOOL_DIR/"
+cp "$ROOT_DIR/launch_gui.sh" "$TOOL_DIR/"
 cp -R "$ROOT_DIR/Objs2Abc" "$TOOL_DIR/"
 cp -R "$ROOT_DIR/head-poses" "$TOOL_DIR/"
 cp "$ROOT_DIR/bin/Objs2Abc" "$TOOL_DIR/bin/"
-chmod +x "$TOOL_DIR/build.sh" "$TOOL_DIR/bin/Objs2Abc"
+chmod +x "$TOOL_DIR/build.sh" "$TOOL_DIR/launch_gui.sh" "$TOOL_DIR/bin/Objs2Abc"
 
 cat > "$APP_CONTENTS/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -67,20 +68,7 @@ set -euo pipefail
 TOOL_DIR="$(cd "$(dirname "$0")/../Resources/tool" && pwd)"
 cd "$TOOL_DIR"
 
-if ! command -v python3 >/dev/null 2>&1; then
-  osascript -e 'display dialog "Python 3 was not found. Install Xcode Command Line Tools or Python 3, then open this app again." buttons {"OK"} default button "OK" with icon stop'
-  exit 1
-fi
-
-if ! python3 - <<'PY' >/dev/null 2>&1
-import tkinter
-PY
-then
-  osascript -e 'display dialog "Python 3 is installed, but tkinter is missing. Install a Python build that includes tkinter, then open this app again." buttons {"OK"} default button "OK" with icon stop'
-  exit 1
-fi
-
-exec python3 "$TOOL_DIR/gui.py"
+exec "$TOOL_DIR/launch_gui.sh"
 LAUNCHER
 chmod +x "$APP_MACOS/$APP_NAME"
 

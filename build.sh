@@ -9,7 +9,7 @@ if ! command -v brew >/dev/null 2>&1; then
   exit 1
 fi
 
-for formula in cmake alembic hdf5 imath zlib; do
+for formula in cmake alembic hdf5 imath zlib python-tk; do
   if ! brew list --versions "$formula" >/dev/null 2>&1; then
     echo "$formula is not installed. Installing with Homebrew..."
     brew install -y "$formula"
