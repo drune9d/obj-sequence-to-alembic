@@ -41,19 +41,20 @@ gh release create "$TAG" "$ZIP_PATH" \
   --notes "## What's new in $TAG
 
 ### Bug fixes
-- Fixed incorrect face winding (reversed CCW→CW) that caused invalid geometry, disappearing mesh pieces, and playback crashes in Blender
-- Fixed UV indices being misaligned to the wrong face corners due to the same winding reversal
-- Fixed undefined behaviour when OBJ files contain blank lines
-- Fixed face count array accumulating across frames instead of being cleared
+- Fixed frozen animation: every frame after the first failed to load (backslash paths could not be opened by the fast reader), so the cache played back as a single static frame. Animation is restored.
+- The app's Rebuild / Build Converter now works when launched from Finder (Homebrew is added to PATH; previously it reported 'Homebrew was not found').
+- Fixed incorrect face winding (reversed CCW→CW) that caused invalid geometry, disappearing mesh pieces, and playback crashes in Blender.
+- UVs are only written when the OBJ actually contains them (previously an uninitialized, garbage UV map could be emitted).
+- Hardened against blank lines and missing command-line argument values.
 
 ### Performance
-- OBJ frames are now read in parallel using a thread pool sized to available CPU cores — typical sequences are 4–6× faster to convert
-- Per-frame vertex parsing now uses \`strtof\` instead of \`istringstream\`, giving a further 3–5× speedup for float parsing
+- OBJ frames are read with a bounded prefetch pipeline that overlaps reading and writing across CPU cores, with faster strtof-based vertex parsing.
 
 ### GUI
-- Progress bar is now determinate during conversion, filling frame by frame
-- Frame counter (e.g. \`12 / 300\`) shown beside the progress bar
-- Build operations keep the indeterminate bouncing bar as before"
+- Determinate progress bar with a per-frame counter (e.g. \`12 / 300\`) during conversion.
+
+### Diagnostics
+- The log now reports how many OBJ files were found and warns if a frame cannot be read."
 
 echo
 echo "Draft release created for $TAG"

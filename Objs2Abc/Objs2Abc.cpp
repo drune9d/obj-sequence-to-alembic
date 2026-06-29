@@ -117,7 +117,10 @@ void getFiles(string path, std::vector<string>& files)
 	intptr_t hFile = 0;
 	struct _finddata_t fileinfo;
 	string p;
-	if ((hFile = _findfirst(p.assign(path).append("\\*").c_str(), &fileinfo)) != -1)
+	// Use forward slashes: these paths are opened directly by std::ifstream
+	// (including via its constructor, which is not covered by the compat
+	// open() normalization macro), and backslashes are literal on macOS.
+	if ((hFile = _findfirst(p.assign(path).append("/*").c_str(), &fileinfo)) != -1)
 	{
 		do
 		{
@@ -125,11 +128,11 @@ void getFiles(string path, std::vector<string>& files)
 			if ((fileinfo.attrib & _A_SUBDIR))
 			{
 				if (strcmp(fileinfo.name, ".") != 0 && strcmp(fileinfo.name, "..") != 0)
-					getFiles(p.assign(path).append("\\").append(fileinfo.name), files);
+					getFiles(p.assign(path).append("/").append(fileinfo.name), files);
 			}
 			else
 			{
-				files.push_back(p.assign(path).append("\\").append(fileinfo.name));
+				files.push_back(p.assign(path).append("/").append(fileinfo.name));
 			}
 		} while (_findnext(hFile, &fileinfo) == 0);
 		_findclose(hFile);
@@ -144,7 +147,10 @@ static std::vector<vertice> ReadObjVerticesOnly(const std::string& path, size_t 
 	std::vector<vertice> vertices;
 	vertices.reserve(reserveHint);
 	std::ifstream file(path, std::ios::binary);
-	if (!file.is_open()) return vertices;
+	if (!file.is_open()) {
+		std::cerr << "Warning: could not open frame: " << path << std::endl;
+		return vertices;
+	}
 	std::string line;
 	while (std::getline(file, line)) {
 		if (line.size() < 3 || line[0] != 'v' || line[1] != ' ') continue;
