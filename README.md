@@ -2,17 +2,22 @@
 
 # OBJ Sequence → Alembic
 
-**Convert an OBJ frame sequence into an Alembic `.abc` mesh cache on macOS.**
+**Free macOS app to convert an OBJ sequence to Alembic (`.abc`) — batch OBJ to ABC mesh cache converter.**
 
 ![Platform](https://img.shields.io/badge/platform-macOS%2013%2B-black)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Format](https://img.shields.io/badge/output-Alembic%20.abc-orange)
 
-<img src="docs/gui.png" alt="OBJ Sequence to Alembic GUI" width="640">
+<img src="docs/gui.png" alt="OBJ sequence to Alembic converter GUI on macOS" width="640">
 
 </div>
 
 ---
+
+Batch-convert a folder of numbered OBJ files into a single animated Alembic
+(`.abc`) mesh cache — with UV support, changing-topology meshes, and fast
+parallel conversion. Drag in a folder of OBJs, get one `.abc` you can import into
+**Blender, Maya, Houdini, or Cinema 4D**.
 
 This tool is meant for folders full of numbered OBJ files, such as:
 
@@ -136,6 +141,13 @@ counts change over time — fracture, fluid, or remeshing simulations — are
 preserved correctly rather than frozen to the first frame. The output stays full
 per-frame topology; control file size by exporting fewer frames or simplifying
 the mesh upstream in your DCC.
+
+## Keywords
+
+OBJ to Alembic · convert OBJ sequence to Alembic · OBJ to ABC converter · batch
+OBJ converter · OBJ sequence to ABC · Alembic mesh cache · OBJ animation to
+Alembic · macOS Alembic converter · OBJ frame sequence · changing topology
+Alembic · Blender / Maya / Houdini / Cinema 4D Alembic import.
 
 ## Credits
 
